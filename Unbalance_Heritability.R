@@ -3,16 +3,16 @@ library(sommer)
 library(psych)
 library(bigmemory)
 
-gtg <- read.table("data/rMVP/SAP.geno.ind")
-Kin <-  attach.big.matrix("data/rMVP/SAP.kin.desc")[]
+gtg <- read.table("SAP.geno.ind")
+Kin <-  attach.big.matrix("SAP.kin.desc")[]
 colnames(Kin) <- gtg$V1
 rownames(Kin) <- gtg$V1
 colnames(gtg) <- "Plot"
 
-gtg2 <- read.csv("data/work/gtg.csv")
+gtg2 <- read.csv("gtg.csv")
 
 
-la <- read.csv("data/work/LA2.csv")
+la <- read.csv("LA2.csv")
 la$Plot <- as.character(la$Plot)
 la$Block <- as.character(la$Block)
 

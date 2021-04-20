@@ -1,0 +1,221 @@
+---
+title: "Process_Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(glmmTMB)
+library(ggbeeswarm)
+library(patchwork)
+library(lme4)
+library(sommer)
+theme_set(theme_classic(base_size = 15, base_family = "NimbusSan"))
+```
+
+```{r}
+la1 <- read.csv("data/work/LA2.csv")
+la1$Plot <- as.character(la1$Plot)
+la1$Block <- as.character(la1$Block)
+la <- na.omit(la1)
+```
+
+```{r}
+laS <- la %>% 
+  group_by(Asseccion, Trt) %>%
+  summarise(LA=mean(value))
+
+laSW <- laS %>% 
+  pivot_wider(names_from = Trt, values_from = LA)
+laSW$plas <- log2(laSW$NN/laSW$SN)
+
+colnames(laSW)[2:4] <- c("LA_SN", "LA_NN", "LA_PLAS")
+
+
+t.test(laSW$LA_SN[!is.na(laSW$LA_NN)],laSW$LA_NN[!is.na(laSW$LA_NN)],paired=TRUE)
+sd(laSW$LA_SN)
+sd(laSW$LA_NN,na.rm=T)
+```
+
+```{r,  fig.width = 15, fig.asp = 0.618, out.width = "100%"}
+#Graphing leaf angle against treatment and genotype
+g1 <- ggplot(laS, aes(Trt, LA)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_quasirandom(size=0.5, alpha=0.5) +
+  xlab("Treatment") +
+  ylab("Leaf angle")
+
+g2 <- ggplot(laS, aes(Trt, LA, group=Asseccion)) +
+  geom_point(size=0.5) + 
+  geom_line(alpha=0.2) + 
+  xlab("Treatment") +
+  ylab("Leaf angle")
+
+
+g3 <- ggplot(laSW, aes(LA_SN, LA_NN)) +
+  geom_abline(slope = 1, linetype="dashed") +
+  geom_point() + 
+  ylim(c(20, 80)) + 
+  xlim(c(20, 80)) +
+  xlab("SN") + 
+  ylab("NN")
+
+g1 + g2 + g3
+```
+
+```{r}
+#response to treatment 
+m1 <- lmer(value ~ Trt + (1+Trt|Asseccion), la)
+m2 <- lmer(value ~ Trt + (1|Asseccion), la)
+m3 <- lmer(value ~ (1|Asseccion), la)
+anova(m1, m2, m3)
+```
+
+```{r}
+#calculate broad sense heritability for leaf angle under standard nitrogen from Random effects
+modSN <- lmer(value ~ (1|Asseccion), la[la$Trt=="SN",])
+summary(modSN)
+#calculate BLUPs for Leaf angle
+lasn <- coef(modSN)$Asseccion
+lasn <- data.frame(Asseccion=rownames(lasn), LA_SN=lasn$`(Intercept)`)
+summary(lasn)
+
+sd
+ ggplot(lasn, aes(x=LA_SN)) + geom_histogram()
+```
+
+```{r}
+#calculate broad sense heritability for leaf angle under no nitrogne from random effects
+modNN <- lmer(value ~ (1|Asseccion), la[la$Trt=="NN",])
+summary(modNN)
+#calculate BLUPs for leaf angle
+lann <- coef(modNN)$Asseccion
+lann <- data.frame(Asseccion=rownames(lann), LA_NN=lann$`(Intercept)`)
+summary(lann)
+
+ ggplot(lann, aes(x=LA_NN)) + geom_histogram()
+```
+
+```{r}
+#determine spacial effect
+la$pos <- numFactor(scale(as.numeric(la$Row)), scale(as.numeric(la$Col)))
+la$ID <-  factor(rep(1, nrow(la)))
+
+
+modTMB <- glmmTMB(value ~ (1|Asseccion), la[la$Trt=="SN",])
+modTMBSpa <- glmmTMB(value ~ (1|Asseccion) + ar1(pos + 0 | ID), la[la$Trt=="SN",])
+anova(modTMB, modTMBSpa)
+```
+
+```{r}
+#m <- c()
+#m$modTMB <- ranef(modTMB)$cond$Asseccion$`(Intercept)`
+#m$modTMBSpa <- ranef(modTMBSpa)$cond$Asseccion$`(Intercept)`
+#m$lmer <- ranef(modSN)$Asseccion$`(Intercept)`
+#m$mean <- laSW$LA_SN
+#m <- as.data.frame(m)
+#PerformanceAnalytics::chart.Correlation(m)
+
+m <- as.data.frame(rownames(ranef(modTMB)$cond$Asseccion))
+colnames(m) <- "Asseccion"
+m <- merge(m, data.frame(Asseccion=rownames(ranef(modTMB)$cond$Asseccion), modTMB=ranef(modTMB)$cond$Asseccion$`(Intercept)`), by="Asseccion")
+m <- merge(m, data.frame(Asseccion=rownames(ranef(modTMBSpa)$cond$Asseccion), modTMBSpa=ranef(modTMBSpa)$cond$Asseccion$`(Intercept)`), by="Asseccion")
+m <- merge(m, data.frame(Asseccion=rownames(ranef(modSN)$Asseccion), lmer=ranef(modSN)$Asseccion$`(Intercept)`), by="Asseccion")
+m <- merge(m, laSW[,1:2], by="Asseccion")
+PerformanceAnalytics::chart.Correlation(m[,2:5])
+
+
+
+
+```
+
+```{r}
+dtf1 <- read.csv("data/work/DTF2.csv")
+dtf <- na.omit(dtf1)
+```
+
+```{r}
+dtfS <- dtf %>% 
+  group_by(Asseccion, Trt) %>%
+  summarise(dtf=mean(dtf))
+
+dtfSW <- dtfS %>% 
+  pivot_wider(names_from = Trt, values_from = dtf)
+
+colnames(dtfSW)[2:3] <- c("DTF_SN", "DTF_NN")
+
+t.test(dtfSW$DTF_SN[!is.na(dtfSW$DTF_NN)],dtfSW$DTF_NN[!is.na(dtfSW$DTF_NN)],paired=TRUE)
+
+modNN <- lmer(dtf ~ (1|Asseccion), dtf[dtf$Trt=="NN",])
+summary(modNN)
+bnn <- coef(modNN)$Asseccion
+bnn <- data.frame(Asseccion=rownames(bnn), DTF_NN=bnn$`(Intercept)`)
+summary(bnn)
+
+ ggplot(bnn, aes(x=DTF_NN)) + geom_histogram()
+
+
+modSN <- lmer(dtf ~ (1|Asseccion), dtf[dtf$Trt=="SN",])
+summary(modSN)
+bsn <- coef(modSN)$Asseccion
+bsn <- data.frame(Asseccion=rownames(bsn), DTF_SN=bsn$`(Intercept)`)
+summary(bsn)
+
+ ggplot(bsn, aes(x=DTF_SN)) + geom_histogram()
+```
+
+```{r, fig.width = 15, fig.asp = 0.618, out.width = "100%"}
+g1 <- ggplot(dtfS, aes(Trt, dtf)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_quasirandom(size=0.5, alpha=0.5) +
+  xlab("Treatment") +
+  ylab("Flowering time")
+
+g2 <- ggplot(dtfS, aes(Trt, dtf, group=Asseccion)) +
+  geom_point(size=0.5) + 
+  geom_line(alpha=0.2) + 
+  xlab("Treatment") +
+  ylab("Flowering Time")
+
+
+g3 <- ggplot(dtfSW, aes(DTF_SN, DTF_NN)) +
+  geom_abline(slope = 1, linetype="dashed") +
+  geom_point() + 
+  ylim(c(50, 80)) + 
+  xlim(c(50, 80)) +
+  xlab("SN") + 
+  ylab("NN")
+
+g1 + g2 + g3
+```
+
+```{r}
+m1 <- lmer(dtf ~ Trt + (1+Trt|Asseccion), dtf)
+m2 <- lmer(dtf ~ Trt + (1|Asseccion), dtf)
+m3 <- lmer(dtf ~ (1|Asseccion), dtf)
+anova(m1, m2, m3)
+
+
+```
+
+```{r}
+dat <- merge(laSW, dtfSW, by="Asseccion")
+```
+
+```{r}
+#convert file to run GWAS conver PI to ID
+
+gtg <- read.csv("data/work/gtg.csv")
+IDlist <- read.table("data/rMVP/SAP.geno.ind", header = F)
+colnames(IDlist) <- "Plot"
+colnames(dat)[1] <- "PI"
+all <- plyr::join(gtg, dat, by="PI")
+all <- plyr::join(IDlist, all, by="Plot")
+all <- all[,-c(2)]
+write.csv(all, "data/work/phenodtfla.csv", row.names = F)
+```
+

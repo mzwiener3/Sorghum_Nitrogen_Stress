@@ -1,0 +1,202 @@
+---
+title: "Process_Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(glmmTMB)
+library(ggbeeswarm)
+library(patchwork)
+library(lme4)
+library(lmerTest)
+theme_set(theme_classic(base_size = 15, base_family = "NimbusSan"))
+```
+
+```{r}
+la1 <- read.csv("data/work/plot_yield.csv")
+la1$Plot <- as.character(la$Plot)
+la1$Block <- as.character(la$Block)
+la <- na.omit(la1)
+```
+
+```{r}
+yS <- la %>% 
+  group_by(Asseccion, Trt) %>%
+  summarise(Yield=mean(value))
+
+ySW <- yS %>% 
+  pivot_wider(names_from = Trt, values_from = Yield)
+ySW$plas <- log2(ySW$LN/ySW$HN)
+
+colnames(ySW)[2:4] <- c("Yield_HN", "Yield_LN", "Yield_PLAS")
+
+
+
+ # t.test(ySW$Yield_HN[!is.na(ySW$Yield_LN)],ySW$Yield_LN[!is.na(ySW$Yield_LN)],paired=TRUE)
+t.test(ySW$Yield_HN[!is.na(ySW$Yield_LN)],ySW$Yield_LN[!is.na(ySW$Yield_LN)],paired=TRUE)
+
+```
+
+```{r,  fig.width = 15, fig.asp = 0.618, out.width = "100%"}
+g1 <- ggplot(yS, aes(Trt, Yield)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_quasirandom(size=0.5, alpha=0.5) +
+  xlab("Treatment") +
+  ylab("Yield")
+
+#used for graphing placticity not same trend for all PI
+g2 <- ggplot(yS, aes(Trt, Yield, group=Asseccion)) +
+  geom_point(size=0.5) + 
+  geom_line(alpha=0.2) + 
+  xlab("Treatment") +
+  ylab("Yield")
+
+
+g3 <- ggplot(ySW, aes(Yield_HN, Yield_LN)) +
+  geom_abline(slope = 1, linetype="dashed") +
+  geom_point() + 
+  ylim(c(20, 80)) + 
+  xlim(c(20, 80)) +
+  xlab("HN") + 
+  ylab("LN")
+
+g1 + g2 + g3
+```
+
+```{r}
+m1 <- lmer(value ~ Trt + (1+Trt|Asseccion), la) #interaction bw trt and asseccion (response to treatment is different)
+m2 <- lmer(value ~ Trt + (1|Asseccion), la)
+m3 <- lmer(value ~ (1|Asseccion), la)
+#anova(m2)
+#summary(m2)
+anova(m1, m2, m3)
+```
+
+```{r}
+modHN <- lmer(value ~ (1|Asseccion), la[la$Trt=="HN",])
+summary(modHN)
+m <- coef(modHN)$Asseccion
+m <- data.frame(Asseccion=rownames(m), BLUP=m$`(Intercept)`)
+summary(m)
+
+ ggplot(m, aes(x=BLUP)) + geom_histogram()
+```
+
+
+```{r}
+modLN <- lmer(value ~ (1|Asseccion), la[la$Trt=="LN",])
+summary(modLN)
+n <- coef(modLN)$Asseccion
+n <- data.frame(Asseccion=rownames(n), BLUP=n$`(Intercept)`)
+summary(n)
+
+ ggplot(n, aes(x=BLUP)) + geom_histogram()
+```
+
+```{r}
+#test for special effect
+la$pos <- numFactor(scale(as.numeric(la$Row)), scale(as.numeric(la$Col)))
+la$ID <-  factor(rep(1, nrow(la)))
+
+
+modTMB <- glmmTMB(value ~ (1|Asseccion), la[la$Trt=="HN",])
+modTMBSpa <- glmmTMB(value ~ (1|Asseccion) + ar1(pos + 0 | ID), la[la$Trt=="HN",])
+anova(modTMB, modTMBSpa)
+```
+
+```{r}
+#blups(including special effects does not change much)
+m <- c()
+m$modTMB <- ranef(modTMB)$cond$Asseccion$`(Intercept)`
+m$modTMBSpa <- ranef(modTMBSpa)$cond$Asseccion$`(Intercept)`
+m$lmer <- ranef(modHN)$Asseccion$`(Intercept)`
+m$mean <- ySW$Yield_HN
+m <- as.data.frame(m)
+PerformanceAnalytics::chart.Correlation(m)
+```
+
+```{r}
+dtf <- read.csv("data/work/DTF.csv")
+```
+
+```{r}
+dtfS <- dtf %>% 
+  group_by(Asseccion, Trt) %>%
+  summarise(dtf=mean(dtf))
+
+dtfSW <- dtfS %>% 
+  pivot_wider(names_from = Trt, values_from = dtf)
+
+colnames(dtfSW)[2:3] <- c("DTF_HN", "DTF_LN")
+
+#modLN <- lmer(dtf ~ (1|Asseccion), dtf[dtf$Trt=="LN",])
+#summary(modLN)
+#n <- coef(modLN)$Asseccion
+#n <- data.frame(Asseccion=rownames(n), BLUP=n$`(Intercept)`)
+#summary(n)
+
+# ggplot(n, aes(x=BLUP)) + geom_histogram()
+
+
+ modHN <- lmer(dtf ~ (1|Asseccion), dtf[dtf$Trt=="HN",])
+summary(modHN)
+m <- coef(modHN)$Asseccion
+m <- data.frame(Asseccion=rownames(m), BLUP=m$`(Intercept)`)
+summary(m)
+
+ ggplot(m, aes(x=BLUP)) + geom_histogram()
+```
+
+```{r, fig.width = 15, fig.asp = 0.618, out.width = "100%"}
+g1 <- ggplot(dtfS, aes(Trt, dtf)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_quasirandom(size=0.5, alpha=0.5) +
+  xlab("Treatment") +
+  ylab("Days to Flowering")
+
+g2 <- ggplot(dtfS, aes(Trt, dtf, group=Asseccion)) +
+  geom_point(size=0.5) + 
+  geom_line(alpha=0.2) + 
+  xlab("Treatment") +
+  ylab("Days to Flowering")
+
+
+g3 <- ggplot(dtfSW, aes(DTF_HN, DTF_LN)) +
+  geom_abline(slope = 1, linetype="dashed") +
+  geom_point() + 
+  ylim(c(50, 80)) + 
+  xlim(c(50, 80)) +
+  xlab("HN") + 
+  ylab("LN")
+
+g1 + g2 + g3
+```
+
+```{r}
+m1 <- lmer(dtf ~ Trt + (1+Trt|Asseccion), dtf)
+m2 <- lmer(dtf ~ Trt + (1|Asseccion), dtf)
+m3 <- lmer(dtf ~ (1|Asseccion), dtf)
+anova(m1, m2, m3)
+```
+
+
+```{r}
+dat <- merge(ySW, dtfSW, by="Asseccion")
+```
+
+```{r}
+gtg <- read.csv("data/work/gtg.csv")
+IDlist <- read.table("data/rMVP/SAP.geno.ind", header = F)
+colnames(IDlist) <- "Plot"
+colnames(dat)[1] <- "PI"
+all <- plyr::join(gtg, dat, by="PI")
+all <- plyr::join(IDlist, all, by="Plot")
+all <- all[,-c(2)]
+write.csv(all, "data/work/phenoy.csv", row.names = F)
+```
+

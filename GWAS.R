@@ -6,14 +6,14 @@ library(rMVP)
 #         pcs.keep = 3, 
 #        priority = "speed")
 
-geno <-  attach.big.matrix("data/rMVP/SAP.geno.desc")
-Kin <-  attach.big.matrix("data/rMVP/SAP.kin.desc")
-map <- data.table::fread("data/rMVP/SAP.geno.map", header = T, data.table = F)
-pc <- bigmemory::as.matrix(attach.big.matrix("data/rMVP/SAP.pc.desc"))
-gtg <- read.table("data/rMVP/SAP.geno.ind")
+geno <-  attach.big.matrix("SAP.geno.desc")
+Kin <-  attach.big.matrix("SAP.kin.desc")
+map <- data.table::fread("SAP.geno.map", header = T, data.table = F)
+pc <- bigmemory::as.matrix(attach.big.matrix("SAP.pc.desc"))
+gtg <- read.table("SAP.geno.ind")
 colnames(gtg) <- "Plot"
 
-pheno <- read.csv("data/work/All_final.csv")
+pheno <- read.csv("All_final.csv")
 
 pheno <- plyr::join(gtg, pheno, by="Plot")
 
@@ -40,10 +40,10 @@ for(i in 2:ncol(pheno)){
   gc()
   
   MVP.Report(imMVP, plot.type = c("q", "m"), memo = colnames(pheno)[i], multracks = T, 
-             outpath = "results/rMVP_final2/", threshold = 0.05/nrow(map))
+             outpath = "results/rMVP_final/", threshold = 0.05/nrow(map))
   
   res <- cbind(imMVP$map, imMVP$glm.results, imMVP$mlm.results, imMVP$farmcpu.results)
-  data.table::fwrite(res, file = paste("results/rMVP_final2/",colnames(pheno)[i], ".csv", sep = ""))
+  data.table::fwrite(res, file = paste("results/rMVP_final/",colnames(pheno)[i], ".csv", sep = ""))
 }
 
     # Run GWAS for LA in HN with DTF as covariance  
@@ -69,7 +69,7 @@ imMVP <- MVP(
 )
 
 res <- cbind(imMVP$map, imMVP$glm.results, imMVP$mlm.results, imMVP$farmcpu.results)
-data.table::fwrite(res, file = "results/rMVP_final2/LA_SN_DTFcov.csv")
+data.table::fwrite(res, file = "results/rMVP_final/LA_SN_DTFcov.csv")
 
 # Run GWAS for LA in LN with DTF as covariance  
 
@@ -94,7 +94,7 @@ imMVP <- MVP(
 )
 
 res <- cbind(imMVP$map, imMVP$glm.results, imMVP$mlm.results, imMVP$farmcpu.results)
-data.table::write(res, file = "results/rMVP_final2/LA_NN_DTFcov.csv")
+data.table::write(res, file = "results/rMVP_final/LA_NN_DTFcov.csv")
     
 
 

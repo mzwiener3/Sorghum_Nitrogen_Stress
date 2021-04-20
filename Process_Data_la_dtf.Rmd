@@ -18,7 +18,7 @@ theme_set(theme_classic(base_size = 15, base_family = "NimbusSan"))
 ```
 
 ```{r}
-la1 <- read.csv("data/work/LA2.csv")
+la1 <- read.csv("LA2.csv")
 la1$Plot <- as.character(la1$Plot)
 la1$Block <- as.character(la1$Block)
 la <- na.omit(la1)
@@ -134,7 +134,7 @@ PerformanceAnalytics::chart.Correlation(m[,2:5])
 ```
 
 ```{r}
-dtf1 <- read.csv("data/work/DTF2.csv")
+dtf1 <- read.csv("DTF2.csv")
 dtf <- na.omit(dtf1)
 ```
 
@@ -209,13 +209,13 @@ dat <- merge(laSW, dtfSW, by="Asseccion")
 ```{r}
 #convert file to run GWAS conver PI to ID
 
-gtg <- read.csv("data/work/gtg.csv")
-IDlist <- read.table("data/rMVP/SAP.geno.ind", header = F)
+gtg <- read.csv("gtg.csv")
+IDlist <- read.table("SAP.geno.ind", header = F)
 colnames(IDlist) <- "Plot"
 colnames(dat)[1] <- "PI"
 all <- plyr::join(gtg, dat, by="PI")
 all <- plyr::join(IDlist, all, by="Plot")
 all <- all[,-c(2)]
-write.csv(all, "data/work/phenodtfla.csv", row.names = F)
+write.csv(all, "phenodtfla.csv", row.names = F)
 ```
 

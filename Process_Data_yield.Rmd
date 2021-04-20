@@ -18,7 +18,7 @@ theme_set(theme_classic(base_size = 15, base_family = "NimbusSan"))
 ```
 
 ```{r}
-la1 <- read.csv("data/work/plot_yield.csv")
+la1 <- read.csv("plot_yield.csv")
 la1$Plot <- as.character(la$Plot)
 la1$Block <- as.character(la$Block)
 la <- na.omit(la1)
@@ -190,13 +190,13 @@ dat <- merge(ySW, dtfSW, by="Asseccion")
 ```
 
 ```{r}
-gtg <- read.csv("data/work/gtg.csv")
-IDlist <- read.table("data/rMVP/SAP.geno.ind", header = F)
+gtg <- read.csv("gtg.csv")
+IDlist <- read.table("SAP.geno.ind", header = F)
 colnames(IDlist) <- "Plot"
 colnames(dat)[1] <- "PI"
 all <- plyr::join(gtg, dat, by="PI")
 all <- plyr::join(IDlist, all, by="Plot")
 all <- all[,-c(2)]
-write.csv(all, "data/work/phenoy.csv", row.names = F)
+write.csv(all, "phenoy.csv", row.names = F)
 ```
 

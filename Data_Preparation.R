@@ -5,8 +5,8 @@ library(stringr)
 ###
 
 ### Map preparation
-map <- read.csv("data/work/Sorghum_Field_Map.csv", header = F)
-plot9 <- read.csv("data/work/Plot9xxx.csv")
+map <- read.csv("Sorghum_Field_Map.csv", header = F)
+plot9 <- read.csv("Plot9xxx.csv")
 
 mapXY <- reshape2::melt(map)
 
@@ -21,7 +21,7 @@ mapXY <- mapXY %>%
 
 ###
 
-dat <- read_xlsx("data/raw/total_LA_data1.xlsx", col_types = c("text", "text", rep("numeric", 6), "date", "text"))
+dat <- read_xlsx("total_LA_data1.xlsx", col_types = c("text", "text", rep("numeric", 6), "date", "text"))
 
 ####################
 la <- dat %>%
@@ -84,8 +84,8 @@ dtf[dtf$Asseccion=="Btx623",]$Asseccion <- "BTx623"
 
 ##################
 
-write.csv(la, "data/work/LA2.csv", row.names = F)
-write.csv(dtf, "data/work/DTF2.csv", row.names = F)
+write.csv(la, "LA2.csv", row.names = F)
+write.csv(dtf, "DTF2.csv", row.names = F)
 
 
 ##################

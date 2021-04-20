@@ -51,7 +51,7 @@ scale_x_continuous(breaks=c(1,2),  labels=c("0 lbs/acre", "80 lbs/acre"), limits
     theme_classic()
 
 
-c <- read.csv("merge_la.csv")
+c <- read.csv("merge_la2.csv")
 
 la_1x1 <- data_1x1(
   array_1 = c$nnla,
